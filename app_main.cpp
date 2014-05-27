@@ -7,14 +7,13 @@
 
 #define LOG_TAG "appproc"
 
+#include <cutils/properties.h>
 #include <binder/IPCThreadState.h>
 #include <binder/ProcessState.h>
 #include <utils/Log.h>
 #include <cutils/process_name.h>
 #include <cutils/memory.h>
-#include <cutils/properties.h>
 #include <android_runtime/AndroidRuntime.h>
-#include <dlfcn.h>
 
 #if PLATFORM_SDK_VERSION >= 16
 #include <sys/personality.h>
@@ -22,11 +21,13 @@
 
 #include <stdio.h>
 #include <unistd.h>
+
 #include "xposed.h"
-#include "xposed_safemode.h"
+#include <dlfcn.h>
 
 int RUNNING_PLATFORM_SDK_VERSION = 0;
-void (*PTR_atrace_set_tracing_enabled)(bool) = NULL;
+static void (*PTR_atrace_set_tracing_enabled)(bool) = NULL;
+static bool isXposedLoaded = true;
 
 
 namespace android {
@@ -83,7 +84,8 @@ public:
 
     virtual void onVmCreated(JNIEnv* env)
     {
-        keepLoadingXposed = xposedOnVmCreated(env, mClassName);
+        if (isXposedLoaded)
+            xposed::xposed->onVmCreated(env, mClassName);
 
         if (mClassName == NULL) {
             return; // Zygote. Nothing to do here.
@@ -176,7 +178,7 @@ int main(int argc, char* const argv[])
     if (argc == 2 && strcmp(argv[1], "--xposedtestsafemode") == 0) {
         printf("Testing Xposed safemode trigger\n");
 
-        if (xposed::detectSafemodeTrigger(xposedSkipSafemodeDelay())) {
+        if (xposed::detectSafemodeTrigger(xposed::shouldSkipSafemodeDelay())) {
             printf("Safemode triggered\n");
         } else {
             printf("Safemode not triggered\n");
@@ -263,35 +265,23 @@ int main(int argc, char* const argv[])
         }
     }
 
-    if (zygote) {
-        if (!xposedDisableSafemode() && xposed::detectSafemodeTrigger(xposedSkipSafemodeDelay()))
-            disableXposed();
-    }
-
     if (niceName && *niceName) {
         setArgv0(argv0, niceName);
         set_process_name(niceName);
     }
 
     runtime.mParentDir = parentDir;
-    
-    if (zygote || access(XPOSED_ENABLE_FOR_TOOLS, F_OK) == 0) {
-        xposedInfo();
-        xposedEnforceDalvik();
-        keepLoadingXposed = !isXposedDisabled() && !xposedShouldIgnoreCommand(className, argc, argv) && addXposedToClasspath(zygote);
-    } else {
-        keepLoadingXposed = false;
-    }
 
+    isXposedLoaded = xposed::initialize(zygote, className, argc, argv);
     if (zygote) {
-        runtime.start(keepLoadingXposed ? XPOSED_CLASS_DOTS : "com.android.internal.os.ZygoteInit",
+        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS : "com.android.internal.os.ZygoteInit",
                 startSystemServer ? "start-system-server" : "");
     } else if (className) {
         // Remainder of args get passed to startup class main()
         runtime.mClassName = className;
         runtime.mArgC = argc - i;
         runtime.mArgV = argv + i;
-        runtime.start(keepLoadingXposed ? XPOSED_CLASS_DOTS : "com.android.internal.os.RuntimeInit",
+        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS : "com.android.internal.os.RuntimeInit",
                 application ? "application" : "tool");
     } else {
         fprintf(stderr, "Error: no class name or --zygote supplied.\n");

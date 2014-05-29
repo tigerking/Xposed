@@ -52,14 +52,14 @@ void printRomInfo() {
     char model[PROPERTY_VALUE_MAX];
     char rom[PROPERTY_VALUE_MAX];
     char fingerprint[PROPERTY_VALUE_MAX];
-    
+
     property_get("ro.build.version.release", release, "n/a");
     property_get("ro.build.version.sdk", sdk, "n/a");
     property_get("ro.product.manufacturer", manufacturer, "n/a");
     property_get("ro.product.model", model, "n/a");
     property_get("ro.build.display.id", rom, "n/a");
     property_get("ro.build.fingerprint", fingerprint, "n/a");
-    
+
     ALOGD("Starting Xposed binary version %s, compiled for SDK %d", XPOSED_VERSION, PLATFORM_SDK_VERSION);
     ALOGD("Phone: %s (%s), Android version %s (SDK %s)", model, manufacturer, release, sdk);
     ALOGD("ROM: %s", rom);
@@ -116,29 +116,29 @@ bool shouldSkipSafemodeDelay() {
 bool shouldIgnoreCommand(const char* className, int argc, const char* const argv[]) {
     if (className == NULL || argc < 4 || strcmp(className, "com.android.commands.am.Am") != 0)
         return false;
-        
+
     if (strcmp(argv[2], "broadcast") != 0 && strcmp(argv[2], "start") != 0)
         return false;
-        
+
     bool mightBeSuperuser = false;
     for (int i = 3; i < argc; i++) {
         if (strcmp(argv[i], "com.noshufou.android.su.RESULT") == 0
          || strcmp(argv[i], "eu.chainfire.supersu.NativeAccess") == 0)
             return true;
-            
+
         if (mightBeSuperuser && strcmp(argv[i], "--user") == 0)
             return true;
-            
+
         char* lastComponent = strrchr(argv[i], '.');
         if (!lastComponent)
             continue;
-        
+
         if (strcmp(lastComponent, ".RequestActivity") == 0
          || strcmp(lastComponent, ".NotifyActivity") == 0
          || strcmp(lastComponent, ".SuReceiver") == 0)
             mightBeSuperuser = true;
     }
-    
+
     return false;
 }
 

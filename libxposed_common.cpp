@@ -110,10 +110,10 @@ void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
     uint32_t* mResIds = (uint32_t*)mTree.mResIds;
     ResXMLTree_attrExt* tag;
     int attrCount;
-    
+
     if (parser == NULL)
         return;
-    
+
     do {
         switch (parser->next()) {
             case ResXMLParser::START_TAG:
@@ -124,7 +124,7 @@ void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
                         (((const uint8_t*)tag)
                          + dtohs(tag->attributeStart)
                          + (dtohs(tag->attributeSize)*idx));
-                         
+
                     // find resource IDs for attribute names
                     int32_t attrNameID = parser->getAttributeNameID(idx);
                     // only replace attribute name IDs for app packages
@@ -135,10 +135,10 @@ void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
                             env->NewString((const jchar*)attrName, attNameLen), origRes);
                         if (env->ExceptionCheck())
                             goto leave;
-                            
+
                         mResIds[attrNameID] = htodl(attrResID);
                     }
-                    
+
                     // find original resource IDs for reference values (app packages only)
                     if (attr->typedValue.dataType != Res_value::TYPE_REFERENCE)
                         continue;
@@ -146,7 +146,7 @@ void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
                     jint oldValue = dtohl(attr->typedValue.data);
                     if (oldValue < 0x7f000000)
                         continue;
-                    
+
                     jint newValue = env->CallStaticIntMethod(xresourcesClass, xresourcesTranslateResId,
                         oldValue, origRes, repRes);
                     if (env->ExceptionCheck())
@@ -163,7 +163,7 @@ void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
                 continue;
         }
     } while (true);
-    
+
     leave:
     parser->restart();
 }

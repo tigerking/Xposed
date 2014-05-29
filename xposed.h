@@ -18,6 +18,7 @@ namespace xposed {
 
 extern XposedShared* xposed;
 
+bool handleOptions(int argc, char* const argv[]);
 bool initialize(bool zygote, const char* className, int argc, char* const argv[]);
 void printRomInfo();
 void enforceDalvik();

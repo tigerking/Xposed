@@ -170,21 +170,8 @@ static void setArgv0(const char *argv0, const char *newArgv0)
 
 int main(int argc, char* const argv[])
 {
-    if (argc == 2 && strcmp(argv[1], "--xposedversion") == 0) {
-        printf("Xposed version: " XPOSED_VERSION "\n");
+    if (xposed::handleOptions(argc, argv))
         return 0;
-    }
-
-    if (argc == 2 && strcmp(argv[1], "--xposedtestsafemode") == 0) {
-        printf("Testing Xposed safemode trigger\n");
-
-        if (xposed::detectSafemodeTrigger(xposed::shouldSkipSafemodeDelay())) {
-            printf("Safemode triggered\n");
-        } else {
-            printf("Safemode not triggered\n");
-        }
-        return 0;
-    }
 
 #if PLATFORM_SDK_VERSION >= 16
 #ifdef __arm__

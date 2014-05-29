@@ -27,6 +27,27 @@ XposedShared* xposed = new XposedShared;
 // Functions
 ////////////////////////////////////////////////////////////
 
+/** Handle special command line options. */
+bool handleOptions(int argc, char* const argv[]) {
+    if (argc == 2 && strcmp(argv[1], "--xposedversion") == 0) {
+        printf("Xposed version: " XPOSED_VERSION "\n");
+        return true;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "--xposedtestsafemode") == 0) {
+        printf("Testing Xposed safemode trigger\n");
+
+        if (xposed::detectSafemodeTrigger(xposed::shouldSkipSafemodeDelay())) {
+            printf("Safemode triggered\n");
+        } else {
+            printf("Safemode not triggered\n");
+        }
+        return true;
+    }
+
+    return false;
+}
+
 /** Initialize Xposed (unless it is disabled). */
 bool initialize(bool zygote, const char* className, int argc, char* const argv[]) {
     if (!zygote && access(XPOSED_ENABLE_FOR_TOOLS, F_OK) != 0)

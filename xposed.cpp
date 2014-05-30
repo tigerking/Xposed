@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dlfcn.h>
+#include <link.h>
 
 extern int RUNNING_PLATFORM_SDK_VERSION;
 
@@ -57,12 +58,11 @@ bool initialize(bool zygote, const char* className, int argc, char* const argv[]
         disableXposed();
 
     printRomInfo();
-    enforceDalvik();
 
     if (isDisabled() || shouldIgnoreCommand(className, argc, argv))
         return false;
 
-    return (loadRuntimeLibrary() && addJarToClasspath(zygote));
+    return addJarToClasspath(zygote);
 }
 
 /** Print information about the used ROM into the log */
@@ -85,19 +85,6 @@ void printRomInfo() {
     ALOGD("Phone: %s (%s), Android version %s (SDK %s)", model, manufacturer, release, sdk);
     ALOGD("ROM: %s", rom);
     ALOGD("Build fingerprint: %s", fingerprint);
-}
-
-/** Make sure that the runtime is Dalvik (and not ART), changing the setting if necessary. */
-void enforceDalvik() {
-    if (RUNNING_PLATFORM_SDK_VERSION < 19)
-        return;
-
-    char runtime[PROPERTY_VALUE_MAX];
-    property_get("persist.sys.dalvik.vm.lib", runtime, "");
-    if (strcmp(runtime, "libdvm.so") != 0) {
-        ALOGE("Unsupported runtime library %s, setting to libdvm.so", runtime);
-        property_set("persist.sys.dalvik.vm.lib", "libdvm.so");
-    }
 }
 
 /** Check whether Xposed is disabled by a flag file */
@@ -163,28 +150,6 @@ bool shouldIgnoreCommand(const char* className, int argc, const char* const argv
     return false;
 }
 
-/** Load the libxposed_*.so library for the currently active runtime. */
-bool loadRuntimeLibrary() {
-    const char *error;
-    void *xposedlib = dlopen(XPOSED_LIB, RTLD_NOW);
-    if (!xposedlib) {
-        ALOGE("Could not load libxposed: %s", dlerror());
-        return false;
-    }
-
-    // Clear previous errors
-    dlerror();
-
-    bool (*xposedInitLib)(XposedShared* shared) = NULL;
-    *(void **) (&xposedInitLib) = dlsym(xposedlib, "xposedInitLib");
-    if (!xposedInitLib)  {
-        ALOGE("Could not find function xposedInitLib");
-        return false;
-    }
-
-    return xposedInitLib(xposed);
-}
-
 /** Add XposedBridge.jar to the Java classpath. */
 bool addJarToClasspath(bool zygote) {
     ALOGI("-----------------");
@@ -216,6 +181,61 @@ bool addJarToClasspath(bool zygote) {
     } else {
         ALOGE("ERROR: Could not access Xposed jar '%s'", XPOSED_JAR);
         return false;
+    }
+}
+
+/** Callback which checks the loaded shared libraries for libdvm/libart. */
+static int onVmCreated_phdr_callback(struct dl_phdr_info* info, size_t size, void* data) {
+    if (info->dlpi_name == NULL) {
+        return 0;
+
+    } else if (strcmp("libdvm.so", info->dlpi_name) == 0) {
+        ALOGI("Detected Dalvik runtime");
+        *(const char**) data = XPOSED_LIB_DALVIK;
+        return 1;
+
+    #ifdef XPOSED_WITH_ART
+    } else if (strcmp("libart.so", info->dlpi_name) == 0) {
+        ALOGI("Detected ART runtime");
+        *(const char**) data = XPOSED_LIB_ART;
+        return 1;
+    #endif
+    }
+
+    return 0;
+}
+
+/** Load the libxposed_*.so library for the currently active runtime. */
+void onVmCreated(JNIEnv* env, const char* className) {
+    // Determine the currently active runtime
+    const char *libname = NULL;
+    dl_iterate_phdr(onVmCreated_phdr_callback, &libname);
+    if (libname == NULL) {
+        ALOGE("Could not determine runtime, not loading Xposed");
+        return;
+    }
+
+    // Load the suitable libxposed_*.so for it
+    const char *error;
+    void* xposedlib = dlopen(libname, RTLD_NOW);
+    if (!xposedlib) {
+        ALOGE("Could not load libxposed: %s", dlerror());
+        return;
+    }
+
+    // Clear previous errors
+    dlerror();
+
+    // Initialize the library
+    bool (*xposedInitLib)(XposedShared* shared) = NULL;
+    *(void **) (&xposedInitLib) = dlsym(xposedlib, "xposedInitLib");
+    if (!xposedInitLib)  {
+        ALOGE("Could not find function xposedInitLib");
+        return;
+    }
+
+    if (xposedInitLib(xposed)) {
+        xposed->onVmCreated(env, className);
     }
 }
 

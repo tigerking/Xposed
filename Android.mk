@@ -20,6 +20,10 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_CFLAGS += -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
+ifeq ($(XPOSED_WITH_ART),true)
+    LOCAL_CFLAGS += -DXPOSED_WITH_ART
+endif
+
 LOCAL_MODULE := xposed
 LOCAL_MODULE_STEM := app_process_xposed_sdk$(PLATFORM_SDK_VERSION)
 LOCAL_MODULE_TAGS := optional
@@ -59,3 +63,11 @@ LOCAL_MODULE := libxposed_dalvik
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
+
+##########################################################
+# Library for ART-specific functions
+##########################################################
+
+ifeq ($(XPOSED_WITH_ART),true)
+    include frameworks/base/cmds/xposed/ART.mk
+endif

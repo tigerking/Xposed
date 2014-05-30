@@ -84,8 +84,9 @@ public:
 
     virtual void onVmCreated(JNIEnv* env)
     {
-        if (isXposedLoaded)
-            xposed::xposed->onVmCreated(env, mClassName);
+        if (isXposedLoaded) {
+            xposed::onVmCreated(env, mClassName);
+        }
 
         if (mClassName == NULL) {
             return; // Zygote. Nothing to do here.
@@ -261,14 +262,14 @@ int main(int argc, char* const argv[])
 
     isXposedLoaded = xposed::initialize(zygote, className, argc, argv);
     if (zygote) {
-        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS : "com.android.internal.os.ZygoteInit",
+        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS_ZYGOTE : "com.android.internal.os.ZygoteInit",
                 startSystemServer ? "start-system-server" : "");
     } else if (className) {
         // Remainder of args get passed to startup class main()
         runtime.mClassName = className;
         runtime.mArgC = argc - i;
         runtime.mArgV = argv + i;
-        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS : "com.android.internal.os.RuntimeInit",
+        runtime.start(isXposedLoaded ? XPOSED_CLASS_DOTS_TOOLS : "com.android.internal.os.RuntimeInit",
                 application ? "application" : "tool");
     } else {
         fprintf(stderr, "Error: no class name or --zygote supplied.\n");

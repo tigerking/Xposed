@@ -78,14 +78,14 @@ void onVmCreated(JNIEnv* env, const char* className) {
         env->ExceptionClear();
         return;
     }
-    
+
     ALOGI("Found Xposed class '%s', now initializing", XPOSED_CLASS);
     if (register_natives_XposedBridge(env) != JNI_OK) {
         ALOGE("Could not register natives for '%s'", XPOSED_CLASS);
         env->ExceptionClear();
         return;
     }
-    
+
     xposedLoadedSuccessfully = true;
 }
 
@@ -390,6 +390,11 @@ jobject jni_XposedBridge_cloneToSubclassNative(JNIEnv* env, jclass clazz, jobjec
     return copyIndirect;
 }
 
+jint jni_XposedBridge_getRuntime(JNIEnv* env, jclass clazz) {
+    return 1; // RUNTIME_DALVIK
+}
+
+
 ////////////////////////////////////////////////////////////
 // JNI methods registrations
 ////////////////////////////////////////////////////////////
@@ -397,6 +402,7 @@ jobject jni_XposedBridge_cloneToSubclassNative(JNIEnv* env, jclass clazz, jobjec
 int register_natives_XposedBridge(JNIEnv* env) {
     const JNINativeMethod natives[] = {
         {"getStartClassName", "()Ljava/lang/String;", (void*)jni_XposedBridge_getStartClassName},
+        {"getRuntime", "()I", (void*)jni_XposedBridge_getRuntime},
         {"initNative", "()Z", (void*)jni_XposedBridge_initNative},
         {"hookMethodNative", "(Ljava/lang/reflect/Member;Ljava/lang/Class;ILjava/lang/Object;)V", (void*)jni_XposedBridge_hookMethodNative},
         {"setObjectClassNative", "(Ljava/lang/Object;Ljava/lang/Class;)V", (void*)jni_XposedBridge_setObjectClassNative},

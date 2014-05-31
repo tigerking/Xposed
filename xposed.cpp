@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-#include <link.h>
+#include <errno.h>
 
 extern int RUNNING_PLATFORM_SDK_VERSION;
 
@@ -185,40 +185,54 @@ bool addJarToClasspath(bool zygote) {
 }
 
 /** Callback which checks the loaded shared libraries for libdvm/libart. */
-static int onVmCreated_phdr_callback(struct dl_phdr_info* info, size_t size, void* data) {
-    if (info->dlpi_name == NULL) {
-        return 0;
-
-    } else if (strcmp("libdvm.so", info->dlpi_name) == 0) {
-        ALOGI("Detected Dalvik runtime");
-        *(const char**) data = XPOSED_LIB_DALVIK;
-        return 1;
-
-    #ifdef XPOSED_WITH_ART
-    } else if (strcmp("libart.so", info->dlpi_name) == 0) {
-        ALOGI("Detected ART runtime");
-        *(const char**) data = XPOSED_LIB_ART;
-        return 1;
-    #endif
+static bool determineRuntime(const char** xposedLibPath) {
+    FILE *fp = fopen("/proc/self/maps", "r");
+    if (fp == NULL) {
+        ALOGE("Could not open /proc/self/maps: %s", strerror(errno));
+        return false;
     }
 
-    return 0;
+    bool success = false;
+    char line[256];
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char* libname = strrchr(line, '/');
+        if (!libname)
+            continue;
+        libname++;
+
+        if (strcmp("libdvm.so\n", libname) == 0) {
+            ALOGI("Detected Dalvik runtime");
+            *xposedLibPath = XPOSED_LIB_DALVIK;
+            success = true;
+            break;
+
+        #ifdef XPOSED_WITH_ART
+        } else if (strcmp("libart.so\n", libname) == 0) {
+            ALOGI("Detected ART runtime");
+            *xposedLibPath = XPOSED_LIB_ART;
+            success = true;
+            break;
+        #endif
+        }
+    }
+
+    fclose(fp);
+    return success;
 }
 
 /** Load the libxposed_*.so library for the currently active runtime. */
 void onVmCreated(JNIEnv* env, const char* className) {
     // Determine the currently active runtime
-    const char *libname = NULL;
-    dl_iterate_phdr(onVmCreated_phdr_callback, &libname);
-    if (libname == NULL) {
+    const char* xposedLibPath = NULL;
+    if (!determineRuntime(&xposedLibPath)) {
         ALOGE("Could not determine runtime, not loading Xposed");
         return;
     }
 
     // Load the suitable libxposed_*.so for it
     const char *error;
-    void* xposedlib = dlopen(libname, RTLD_NOW);
-    if (!xposedlib) {
+    void* xposedLibHandle = dlopen(xposedLibPath, RTLD_NOW);
+    if (!xposedLibHandle) {
         ALOGE("Could not load libxposed: %s", dlerror());
         return;
     }
@@ -228,7 +242,7 @@ void onVmCreated(JNIEnv* env, const char* className) {
 
     // Initialize the library
     bool (*xposedInitLib)(XposedShared* shared) = NULL;
-    *(void **) (&xposedInitLib) = dlsym(xposedlib, "xposedInitLib");
+    *(void **) (&xposedInitLib) = dlsym(xposedLibHandle, "xposedInitLib");
     if (!xposedInitLib)  {
         ALOGE("Could not find function xposedInitLib");
         return;

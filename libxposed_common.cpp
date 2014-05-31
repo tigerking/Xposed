@@ -52,17 +52,17 @@ int readIntConfig(const char* fileName, int defaultValue) {
 // JNI methods
 ////////////////////////////////////////////////////////////
 
-jobject jni_XposedBridge_getStartClassName(JNIEnv* env, jclass clazz) {
+jobject XposedBridge_getStartClassName(JNIEnv* env, jclass clazz) {
     return env->NewStringUTF(startClassName);
 }
 
-jboolean jni_XposedBridge_initNative(JNIEnv* env, jclass clazz) {
+jboolean XposedBridge_initNative(JNIEnv* env, jclass clazz) {
     if (!xposedLoadedSuccessfully) {
         ALOGE("Not initializing Xposed because of previous errors");
         return false;
     }
 
-    if (!jni_callback_XposedBridge_initNative(env))
+    if (!callback_XposedBridge_initNative(env))
         return false;
 
     xresourcesClass = env->FindClass(XRESOURCES_CLASS);
@@ -100,7 +100,7 @@ jboolean jni_XposedBridge_initNative(JNIEnv* env, jclass clazz) {
     return true;
 }
 
-void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
+void XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz,
             jint parserPtr, jobject origRes, jobject repRes) {
 
     using namespace android;

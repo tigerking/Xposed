@@ -23,9 +23,9 @@ extern const char* startClassName;
 
 extern int readIntConfig(const char* fileName, int defaultValue);
 
-extern jboolean jni_XposedBridge_initNative(JNIEnv* env, jclass clazz);
-extern void jni_XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz, jint parserPtr, jobject origRes, jobject repRes);
-extern jobject jni_XposedBridge_getStartClassName(JNIEnv* env, jclass clazz);
+extern jboolean XposedBridge_initNative(JNIEnv* env, jclass clazz);
+extern void     XResources_rewriteXmlReferencesNative(JNIEnv* env, jclass clazz, jint parserPtr, jobject origRes, jobject repRes);
+extern jobject  XposedBridge_getStartClassName(JNIEnv* env, jclass clazz);
 
 /////////////////////////////////////////////////////////////////
 // To be provided by runtime-specific implementation
@@ -34,7 +34,7 @@ extern "C" bool xposedInitLib(xposed::XposedShared* shared);
 extern void onVmCreated(JNIEnv* env, const char* className);
 extern void logExceptionStackTrace();
 
-extern jboolean jni_callback_XposedBridge_initNative(JNIEnv* env);
+extern jboolean callback_XposedBridge_initNative(JNIEnv* env);
 
 extern int register_natives_XposedBridge(JNIEnv* env);
 extern int register_natives_XResources(JNIEnv* env);

@@ -18,7 +18,7 @@ namespace xposed {
 bool initMemberOffsets(JNIEnv* env);
 void prepareSubclassReplacement(jclass clazz);
 void hookedMethodCallback(const u4* args, JValue* pResult, const Method* method, ::Thread* self);
-void jni_XposedBridge_invokeOriginalMethodNative(const u4* args, JValue* pResult, const Method* method, ::Thread* self);
+void XposedBridge_invokeOriginalMethodNative(const u4* args, JValue* pResult, const Method* method, ::Thread* self);
 
 
 ////////////////////////////////////////////////////////////
@@ -163,7 +163,7 @@ inline bool isMethodHooked(const Method* method) {
 // JNI methods
 ////////////////////////////////////////////////////////////
 
-jboolean jni_callback_XposedBridge_initNative(JNIEnv* env) {
+jboolean callback_XposedBridge_initNative(JNIEnv* env) {
     xposedHandleHookedMethod = (Method*) env->GetStaticMethodID(xposedClass, "handleHookedMethod",
         "(Ljava/lang/reflect/Member;ILjava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;");
     if (xposedHandleHookedMethod == NULL) {
@@ -181,7 +181,7 @@ jboolean jni_callback_XposedBridge_initNative(JNIEnv* env) {
         env->ExceptionClear();
         return false;
     }
-    dvmSetNativeFunc(xposedInvokeOriginalMethodNative, jni_XposedBridge_invokeOriginalMethodNative, NULL);
+    dvmSetNativeFunc(xposedInvokeOriginalMethodNative, XposedBridge_invokeOriginalMethodNative, NULL);
 
     objectArrayClass = dvmFindArrayClass("[Ljava/lang/Object;", NULL);
     if (objectArrayClass == NULL) {
@@ -287,7 +287,7 @@ void hookedMethodCallback(const u4* args, JValue* pResult, const Method* method,
 }
 
 
-void jni_XposedBridge_hookMethodNative(JNIEnv* env, jclass clazz, jobject reflectedMethodIndirect,
+void XposedBridge_hookMethodNative(JNIEnv* env, jclass clazz, jobject reflectedMethodIndirect,
             jobject declaredClassIndirect, jint slot, jobject additionalInfoIndirect) {
     // Usage errors?
     if (declaredClassIndirect == NULL || reflectedMethodIndirect == NULL) {
@@ -337,7 +337,7 @@ void jni_XposedBridge_hookMethodNative(JNIEnv* env, jclass clazz, jobject reflec
  * Simplified copy of Method.invokeNative(), but calls the original (non-hooked) method
  * and has no access checks. Used to call the real implementation of hooked methods.
  */
-void jni_XposedBridge_invokeOriginalMethodNative(const u4* args, JValue* pResult,
+void XposedBridge_invokeOriginalMethodNative(const u4* args, JValue* pResult,
             const Method* method, ::Thread* self) {
     Method* meth = (Method*) args[1];
     if (meth == NULL) {
@@ -356,7 +356,7 @@ void jni_XposedBridge_invokeOriginalMethodNative(const u4* args, JValue* pResult
     return;
 }
 
-void jni_XposedBridge_setObjectClassNative(JNIEnv* env, jclass clazz, jobject objIndirect, jclass clzIndirect) {
+void XposedBridge_setObjectClassNative(JNIEnv* env, jclass clazz, jobject objIndirect, jclass clzIndirect) {
     Object* obj = (Object*) dvmDecodeIndirectRef(dvmThreadSelf(), objIndirect);
     ClassObject* clz = (ClassObject*) dvmDecodeIndirectRef(dvmThreadSelf(), clzIndirect);
     if (clz->status < CLASS_INITIALIZED && !dvmInitClass(clz)) {
@@ -366,12 +366,12 @@ void jni_XposedBridge_setObjectClassNative(JNIEnv* env, jclass clazz, jobject ob
     obj->clazz = clz;
 }
 
-void jni_XposedBridge_dumpObjectNative(JNIEnv* env, jclass clazz, jobject objIndirect) {
+void XposedBridge_dumpObjectNative(JNIEnv* env, jclass clazz, jobject objIndirect) {
     Object* obj = (Object*) dvmDecodeIndirectRef(dvmThreadSelf(), objIndirect);
     dvmDumpObject(obj);
 }
 
-jobject jni_XposedBridge_cloneToSubclassNative(JNIEnv* env, jclass clazz, jobject objIndirect, jclass clzIndirect) {
+jobject XposedBridge_cloneToSubclassNative(JNIEnv* env, jclass clazz, jobject objIndirect, jclass clzIndirect) {
     Object* obj = (Object*) dvmDecodeIndirectRef(dvmThreadSelf(), objIndirect);
     ClassObject* clz = (ClassObject*) dvmDecodeIndirectRef(dvmThreadSelf(), clzIndirect);
 
@@ -390,7 +390,7 @@ jobject jni_XposedBridge_cloneToSubclassNative(JNIEnv* env, jclass clazz, jobjec
     return copyIndirect;
 }
 
-jint jni_XposedBridge_getRuntime(JNIEnv* env, jclass clazz) {
+jint XposedBridge_getRuntime(JNIEnv* env, jclass clazz) {
     return 1; // RUNTIME_DALVIK
 }
 
@@ -401,13 +401,13 @@ jint jni_XposedBridge_getRuntime(JNIEnv* env, jclass clazz) {
 
 int register_natives_XposedBridge(JNIEnv* env) {
     const JNINativeMethod natives[] = {
-        {"getStartClassName", "()Ljava/lang/String;", (void*)jni_XposedBridge_getStartClassName},
-        {"getRuntime", "()I", (void*)jni_XposedBridge_getRuntime},
-        {"initNative", "()Z", (void*)jni_XposedBridge_initNative},
-        {"hookMethodNative", "(Ljava/lang/reflect/Member;Ljava/lang/Class;ILjava/lang/Object;)V", (void*)jni_XposedBridge_hookMethodNative},
-        {"setObjectClassNative", "(Ljava/lang/Object;Ljava/lang/Class;)V", (void*)jni_XposedBridge_setObjectClassNative},
-        {"dumpObjectNative", "(Ljava/lang/Object;)V", (void*)jni_XposedBridge_dumpObjectNative},
-        {"cloneToSubclassNative", "(Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;", (void*)jni_XposedBridge_cloneToSubclassNative},
+        {"getStartClassName", "()Ljava/lang/String;", (void*)XposedBridge_getStartClassName},
+        {"getRuntime", "()I", (void*)XposedBridge_getRuntime},
+        {"initNative", "()Z", (void*)XposedBridge_initNative},
+        {"hookMethodNative", "(Ljava/lang/reflect/Member;Ljava/lang/Class;ILjava/lang/Object;)V", (void*)XposedBridge_hookMethodNative},
+        {"setObjectClassNative", "(Ljava/lang/Object;Ljava/lang/Class;)V", (void*)XposedBridge_setObjectClassNative},
+        {"dumpObjectNative", "(Ljava/lang/Object;)V", (void*)XposedBridge_dumpObjectNative},
+        {"cloneToSubclassNative", "(Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;", (void*)XposedBridge_cloneToSubclassNative},
     };
     return env->RegisterNatives(xposedClass, natives, NELEM(natives));
 }
@@ -415,7 +415,7 @@ int register_natives_XposedBridge(JNIEnv* env) {
 int register_natives_XResources(JNIEnv* env) {
     const JNINativeMethod natives[] = {
         {"rewriteXmlReferencesNative", "(ILandroid/content/res/XResources;Landroid/content/res/Resources;)V",
-            (void*)jni_XResources_rewriteXmlReferencesNative},
+            (void*)XResources_rewriteXmlReferencesNative},
     };
     return env->RegisterNatives(xresourcesClass, natives, NELEM(natives));
 }
